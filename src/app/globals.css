@@ -21,3 +21,38 @@ body {
   color: black;
   font-family: Arial, Helvetica, sans-serif;
 }
+
+.tips {
+  position: fixed;
+  top: 80px;
+  right: 20px;
+  width: 280px;
+  max-height: 85vh;
+  overflow-y: auto;
+  background-color: #f9f9f9;
+  border: 2px solid #ccc;
+  border-radius: 10px;
+  padding: 16px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+  font-family: sans-serif;
+  font-size: 14px;
+  z-index: 1000;
+}
+
+.tips h2 {
+  margin-top: 0;
+  font-size: 18px;
+  color: #4a4a4a;
+}
+
+.tips h3 {
+  margin-top: 12px;
+  font-size: 16px;
+  color: #333;
+}
+
+.tips ul,
+.tips ol {
+  margin-left: 20px;
+  padding-left: 0;
+}

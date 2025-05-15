@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { parseLine } from "@/lib/parser";
+import { Tips } from "@/components/Tips";
 
 type ParsedAction = {
   player: string;
@@ -9,6 +10,7 @@ type ParsedAction = {
   quality: string;
   target?: string;
   point: boolean;
+  targetPosition?: number;
 };
 
 type PlayerStats = {
@@ -17,7 +19,7 @@ type PlayerStats = {
   serves: number[];
   aces: number;
   spikes: { quality: number; target?: string }[];
-  sets: { quality: number; target?: string }[];
+  sets: { quality: number; target?: string; targetPosition?: number }[];
   freeBall: number[];
   blocks: number[];
   errors: number;
@@ -43,103 +45,181 @@ export default function ScoutingPage() {
   const handleParse = () => {
     const lines = input.split("\n").filter(Boolean);
     const result = lines.map(parseLine).filter(Boolean) as ParsedAction[];
+    console.log(result);
     setParsed(result);
 
     const updatedStats: Record<string, PlayerStats> = {};
     const updatedTeamStats = { team1Points: 0, team2Points: 0 };
 
-    result.forEach(({ player, action: act, quality, target, point }) => {
-      if (!updatedStats[player]) {
-        updatedStats[player] = {
-          receives: [],
-          digs: [],
-          serves: [],
-          aces: 0,
-          spikes: [],
-          sets: [],
-          freeBall: [],
-          blocks: [],
-          errors: 0,
-          points: 0,
-        };
+    result.forEach(
+      ({ player, action: act, quality, target, point, targetPosition }) => {
+        if (!updatedStats[player]) {
+          updatedStats[player] = {
+            receives: [],
+            digs: [],
+            serves: [],
+            aces: 0,
+            spikes: [],
+            sets: [],
+            freeBall: [],
+            blocks: [],
+            errors: 0,
+            points: 0,
+          };
+        }
+
+        const q =
+          quality === "Good"
+            ? 2
+            : quality === "Normal"
+            ? 1
+            : quality === "Poor"
+            ? 0
+            : -1;
+
+        switch (act) {
+          case "Serve":
+            updatedStats[player].serves.push(q);
+            if (q === -1) {
+              updatedStats[player].errors += 1;
+              updatedTeamStats.team2Points += 1;
+            }
+            if (point) {
+              updatedStats[player].aces += 1;
+              updatedStats[player].points += 1;
+            }
+            break;
+
+          case "Receive":
+            updatedStats[player].receives.push(q);
+            if (q === -1) {
+              updatedStats[player].errors += 1;
+              updatedTeamStats.team2Points += 1;
+            }
+            break;
+
+          case "Dig":
+            updatedStats[player].digs.push(q);
+            if (q === -1) {
+              updatedStats[player].errors += 1;
+              updatedTeamStats.team2Points += 1;
+            }
+            break;
+
+          case "Attack":
+            updatedStats[player].spikes.push({ quality: q, target });
+            if (q === -1) {
+              updatedStats[player].errors += 1;
+              updatedTeamStats.team2Points += 1;
+            }
+            if (point) {
+              updatedStats[player].points += 1;
+            }
+            break;
+
+          case "Set":
+            updatedStats[player].sets.push({
+              quality: q,
+              target,
+              targetPosition: targetPosition,
+            });
+            if (q === -1) {
+              updatedStats[player].errors += 1;
+              updatedTeamStats.team2Points += 1;
+            }
+            break;
+
+          case "FreeBall":
+            updatedStats[player].freeBall.push(q);
+            if (q === -1) {
+              updatedStats[player].errors += 1;
+              updatedTeamStats.team2Points += 1;
+            }
+            break;
+
+          case "Block":
+            updatedStats[player].blocks.push(q);
+            if (q === -1) {
+              updatedStats[player].errors += 1;
+              updatedTeamStats.team2Points += 1;
+            }
+            if (point) {
+              updatedStats[player].points += 1;
+            }
+            break;
+        }
       }
-
-      const q =
-        quality === "Good"
-          ? 2
-          : quality === "Normal"
-          ? 1
-          : quality === "Bad"
-          ? 0
-          : -1;
-
-      switch (act) {
-        case "Serve":
-          updatedStats[player].serves.push(q);
-          if (q === -1) {
-            updatedStats[player].errors += 1;
-            updatedTeamStats.team2Points += 1;
-          }
-          if (point) {
-            updatedStats[player].aces += 1;
-            updatedStats[player].points += 1;
-          }
-          break;
-
-        case "Dig":
-          updatedStats[player].digs.push(q);
-          if (q === -1) {
-            updatedStats[player].errors += 1;
-            updatedTeamStats.team2Points += 1;
-          }
-          break;
-
-        case "Attack":
-          updatedStats[player].spikes.push({ quality: q, target });
-          if (q === -1) {
-            updatedStats[player].errors += 1;
-            updatedTeamStats.team2Points += 1;
-          }
-          if (point) {
-            updatedStats[player].points += 1;
-          }
-          break;
-
-        case "Set":
-          updatedStats[player].sets.push({ quality: q, target });
-          if (q === -1) {
-            updatedStats[player].errors += 1;
-            updatedTeamStats.team2Points += 1;
-          }
-          break;
-
-        case "FreeBall":
-          updatedStats[player].freeBall.push(q);
-          if (q === -1) {
-            updatedStats[player].errors += 1;
-            updatedTeamStats.team2Points += 1;
-          }
-          break;
-
-        case "Block":
-          updatedStats[player].blocks.push(q);
-          if (q === -1) {
-            updatedStats[player].errors += 1;
-            updatedTeamStats.team2Points += 1;
-          }
-          if (point) {
-            updatedStats[player].points += 1;
-          }
-          break;
-      }
-    });
+    );
 
     setPlayerStats(updatedStats);
     setTeamStats(updatedTeamStats);
   };
 
+  const countQualities = (arr: number[]) => {
+    return {
+      good: arr.filter((q) => q === 2).length,
+      normal: arr.filter((q) => q === 1).length,
+      poor: arr.filter((q) => q === 0).length,
+      error: arr.filter((q) => q === -1).length,
+    };
+  };
+
+  const groupByTarget = (arr: { quality: number; target?: string }[]) => {
+    const result: Record<
+      string,
+      {
+        total: number;
+        good: number;
+        normal: number;
+        poor: number;
+        error: number;
+      }
+    > = {};
+    arr.forEach(({ quality, target }) => {
+      const t = target || "-";
+      if (!result[t]) {
+        result[t] = { total: 0, good: 0, normal: 0, poor: 0, error: 0 };
+      }
+      result[t].total += 1;
+      if (quality === 2) result[t].good += 1;
+      else if (quality === 1) result[t].normal += 1;
+      else if (quality === 0) result[t].poor += 1;
+      else if (quality === -1) result[t].error += 1;
+    });
+    return result;
+  };
+
+  const groupSetsByTarget = (
+    arr: { quality: number; target?: string; targetPosition?: number }[]
+  ) => {
+    const result: Record<
+      string,
+      {
+        total: number;
+        good: number;
+        normal: number;
+        poor: number;
+        error: number;
+      }
+    > = {};
+    arr.forEach(({ quality, target, targetPosition }) => {
+      let t = target || "-";
+      if (targetPosition !== undefined) t += `>${targetPosition}`;
+      if (!result[t]) {
+        result[t] = { total: 0, good: 0, normal: 0, poor: 0, error: 0 };
+      }
+      result[t].total += 1;
+      if (quality === 2) result[t].good += 1;
+      else if (quality === 1) result[t].normal += 1;
+      else if (quality === 0) result[t].poor += 1;
+      else if (quality === -1) result[t].error += 1;
+    });
+    return result;
+  };
+
   return (
-    <main className="p-6 max-w-5xl mx-auto">
+    <main className="p-6 max-w-7xl mx-auto">
+      <Tips />
       <h1 className="text-2xl font-bold mb-4">📋 Volleyball Scouting Tool</h1>
 
       <textarea
@@ -157,7 +237,7 @@ export default function ScoutingPage() {
 
       <div className="mt-6">
         <h2 className="font-semibold">Player Stats</h2>
-        <table className="min-w-full table-auto mt-4 border-collapse text-sm">
+        <table className="min-w-full w-full table-auto mt-4 border-collapse text-sm">
           <thead>
             <tr>
               <th className="border p-2">Player</th>
@@ -166,7 +246,9 @@ export default function ScoutingPage() {
               <th className="border p-2">Serves</th>
               <th className="border p-2">Aces</th>
               <th className="border p-2">Spikes</th>
+              <th className="border p-2">Spikes Adv.</th>
               <th className="border p-2">Sets</th>
+              <th className="border p-2">Sets Adv.</th>
               <th className="border p-2">Free Balls</th>
               <th className="border p-2">Blocks</th>
               <th className="border p-2">Errors</th>
@@ -174,37 +256,325 @@ export default function ScoutingPage() {
             </tr>
           </thead>
           <tbody>
-            {Object.entries(playerStats).map(([player, stats]) => (
-              <tr key={player}>
-                <td className="border p-2">{player}</td>
-                <td className="border p-2">{stats.receives.join(", ")}</td>
-                <td className="border p-2">{stats.digs.join(", ")}</td>
-                <td className="border p-2">{stats.serves.join(", ")}</td>
-                <td className="border p-2">{stats.aces}</td>
-                <td className="border p-2">
-                  {stats.spikes
-                    .map((s) => `${s.quality}${s.target ?? ""}`)
-                    .join(", ")}
-                </td>
-                <td className="border p-2">
-                  {stats.sets
-                    .map((s) => `${s.quality}${s.target ?? ""}`)
-                    .join(", ")}
-                </td>
-                <td className="border p-2">{stats.freeBall.join(", ")}</td>
-                <td className="border p-2">{stats.blocks.join(", ")}</td>
-                <td className="border p-2">{stats.errors}</td>
-                <td className="border p-2">{stats.points}</td>
-              </tr>
-            ))}
+            {Object.entries(playerStats).map(([player, stats]) => {
+              const receiveCounts = countQualities(stats.receives);
+              const setCounts = countQualities(
+                stats.sets.map((s) => s.quality)
+              );
+              const spikeCounts = countQualities(
+                stats.spikes.map((s) => s.quality)
+              );
+              const blockCounts = countQualities(stats.blocks);
+              const serveCounts = countQualities(stats.serves);
+              const freeBallCounts = countQualities(stats.freeBall);
+              const digCounts = countQualities(stats.digs);
+
+              return (
+                <tr key={player}>
+                  <td className="border p-2">{player}</td>
+                  <td className="border p-2">
+                    {stats.receives.length > 0 ? (
+                      <>
+                        <span style={{ color: "#16a34a" }}>
+                          {receiveCounts.good}
+                        </span>
+                        ,{" "}
+                        <span style={{ color: "#2563eb" }}>
+                          {receiveCounts.normal}
+                        </span>
+                        ,{" "}
+                        <span style={{ color: "#f59e42" }}>
+                          {receiveCounts.poor}
+                        </span>
+                        ,{" "}
+                        <span style={{ color: "#dc2626" }}>
+                          {receiveCounts.error}
+                        </span>
+                      </>
+                    ) : (
+                      "0"
+                    )}
+                  </td>
+                  <td className="border p-2">
+                    {stats.digs.length > 0 ? (
+                      <>
+                        <span style={{ color: "#16a34a" }}>
+                          {digCounts.good}
+                        </span>
+                        ,{" "}
+                        <span style={{ color: "#2563eb" }}>
+                          {digCounts.normal}
+                        </span>
+                        ,{" "}
+                        <span style={{ color: "#f59e42" }}>
+                          {digCounts.poor}
+                        </span>
+                        ,{" "}
+                        <span style={{ color: "#dc2626" }}>
+                          {digCounts.error}
+                        </span>
+                      </>
+                    ) : (
+                      "0"
+                    )}
+                  </td>
+                  <td className="border p-2">
+                    {stats.serves.length > 0 ? (
+                      <>
+                        <span style={{ color: "#16a34a" }}>
+                          {serveCounts.good}
+                        </span>
+                        ,{" "}
+                        <span style={{ color: "#2563eb" }}>
+                          {serveCounts.normal}
+                        </span>
+                        ,{" "}
+                        <span style={{ color: "#f59e42" }}>
+                          {serveCounts.poor}
+                        </span>
+                        ,{" "}
+                        <span style={{ color: "#dc2626" }}>
+                          {serveCounts.error}
+                        </span>
+                      </>
+                    ) : (
+                      "0"
+                    )}
+                  </td>
+                  <td className="border p-2">{stats.aces}</td>
+                  <td className="border p-2">
+                    {stats.spikes.length > 0 ? (
+                      <>
+                        <span style={{ color: "#16a34a" }}>
+                          {spikeCounts.good}
+                        </span>
+                        ,{" "}
+                        <span style={{ color: "#2563eb" }}>
+                          {spikeCounts.normal}
+                        </span>
+                        ,{" "}
+                        <span style={{ color: "#f59e42" }}>
+                          {spikeCounts.poor}
+                        </span>
+                        ,{" "}
+                        <span style={{ color: "#dc2626" }}>
+                          {spikeCounts.error}
+                        </span>
+                      </>
+                    ) : (
+                      "0"
+                    )}
+                  </td>
+                  <td className="border p-2">
+                    {stats.spikes.length > 0 ? (
+                      <div>
+                        <table className="min-w-full table-auto mt-2 border-collapse text-xs">
+                          <thead>
+                            <tr>
+                              <th className="border p-1"></th>
+                              {[1, 2, 3, 4, 5, 6].map((pos) => (
+                                <th key={pos} className="border p-1">
+                                  {pos}
+                                </th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {["good", "normal", "poor", "error"].map(
+                              (quality, qIdx) => (
+                                <tr key={quality}>
+                                  <td className="border p-1 text-center">
+                                    <span
+                                      style={{
+                                        color:
+                                          quality === "good"
+                                            ? "#16a34a"
+                                            : quality === "normal"
+                                            ? "#2563eb"
+                                            : quality === "poor"
+                                            ? "#f59e42"
+                                            : quality === "error"
+                                            ? "#dc2626"
+                                            : undefined,
+                                      }}
+                                    >
+                                      {quality[0].toUpperCase()}
+                                    </span>
+                                  </td>
+                                  {[1, 2, 3, 4, 5, 6].map((pos) => {
+                                    const count = stats.spikes.filter(
+                                      (s) =>
+                                        s.target === `#${pos}` &&
+                                        ((qIdx === 0 && s.quality === 2) ||
+                                          (qIdx === 1 && s.quality === 1) ||
+                                          (qIdx === 2 && s.quality === 0) ||
+                                          (qIdx === 3 && s.quality === -1))
+                                    ).length;
+                                    return (
+                                      <td
+                                        key={pos}
+                                        className="border p-1 text-center"
+                                      >
+                                        {count > 0 ? count : ""}
+                                      </td>
+                                    );
+                                  })}
+                                </tr>
+                              )
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      "—"
+                    )}
+                  </td>
+                  <td className="border p-2">
+                    {stats.sets.length > 0 ? (
+                      <>
+                        <span style={{ color: "#16a34a" }}>
+                          {setCounts.good}
+                        </span>
+                        ,{" "}
+                        <span style={{ color: "#2563eb" }}>
+                          {setCounts.normal}
+                        </span>
+                        ,{" "}
+                        <span style={{ color: "#f59e42" }}>
+                          {setCounts.poor}
+                        </span>
+                        ,{" "}
+                        <span style={{ color: "#dc2626" }}>
+                          {setCounts.error}
+                        </span>
+                      </>
+                    ) : (
+                      "0"
+                    )}
+                  </td>
+                  <td className="border p-2">
+                    {stats.sets.length > 0 ? (
+                      <div>
+                        <table className="min-w-full table-auto mt-2 border-collapse text-xs">
+                          <thead>
+                            <tr>
+                              <th className="border p-1"></th>
+                              {[1, 2, 3, 4, 5, 6].map((pos) => (
+                                <th key={pos} className="border p-1">
+                                  {pos}
+                                </th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {["good", "normal", "poor", "error"].map(
+                              (quality, qIdx) => (
+                                <tr key={quality}>
+                                  <td className="border p-1 text-center">
+                                    <span
+                                      style={{
+                                        color:
+                                          quality === "good"
+                                            ? "#16a34a"
+                                            : quality === "normal"
+                                            ? "#2563eb"
+                                            : quality === "poor"
+                                            ? "#f59e42"
+                                            : quality === "error"
+                                            ? "#dc2626"
+                                            : undefined,
+                                      }}
+                                    >
+                                      {quality[0].toUpperCase()}
+                                    </span>
+                                  </td>
+                                  {[1, 2, 3, 4, 5, 6].map((pos) => {
+                                    const count = stats.sets.filter(
+                                      (s) =>
+                                        s.target === `#${pos}` &&
+                                        ((qIdx === 0 && s.quality === 2) ||
+                                          (qIdx === 1 && s.quality === 1) ||
+                                          (qIdx === 2 && s.quality === 0) ||
+                                          (qIdx === 3 && s.quality === -1))
+                                    ).length;
+                                    return (
+                                      <td
+                                        key={pos}
+                                        className="border p-1 text-center"
+                                      >
+                                        {count > 0 ? count : ""}
+                                      </td>
+                                    );
+                                  })}
+                                </tr>
+                              )
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      "—"
+                    )}
+                  </td>
+                  <td className="border p-2">
+                    {stats.freeBall.length > 0 ? (
+                      <>
+                        <span style={{ color: "#16a34a" }}>
+                          {freeBallCounts.good}
+                        </span>
+                        ,{" "}
+                        <span style={{ color: "#2563eb" }}>
+                          {freeBallCounts.normal}
+                        </span>
+                        ,{" "}
+                        <span style={{ color: "#f59e42" }}>
+                          {freeBallCounts.poor}
+                        </span>
+                        ,{" "}
+                        <span style={{ color: "#dc2626" }}>
+                          {freeBallCounts.error}
+                        </span>
+                      </>
+                    ) : (
+                      "0"
+                    )}
+                  </td>
+                  <td className="border p-2">
+                    {stats.blocks.length > 0 ? (
+                      <>
+                        <span style={{ color: "#16a34a" }}>
+                          {blockCounts.good}
+                        </span>
+                        ,{" "}
+                        <span style={{ color: "#2563eb" }}>
+                          {blockCounts.normal}
+                        </span>
+                        ,{" "}
+                        <span style={{ color: "#f59e42" }}>
+                          {blockCounts.poor}
+                        </span>
+                        ,{" "}
+                        <span style={{ color: "#dc2626" }}>
+                          {blockCounts.error}
+                        </span>
+                      </>
+                    ) : (
+                      "0"
+                    )}
+                  </td>
+                  <td className="border p-2">{stats.errors}</td>
+                  <td className="border p-2">{stats.points}</td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
 
       <div className="mt-6">
-        <h2 className="font-semibold">Team Points</h2>
-        <p>Team 1 Points: {teamStats.team1Points}</p>
-        <p>Team 2 Points: {teamStats.team2Points}</p>
+        <h2 className="font-semibold"> Pontos</h2>
+        <p>Time Casa: {teamStats.team1Points}</p>
+        <p>Time Fora: {teamStats.team2Points}</p>
       </div>
     </main>
   );
