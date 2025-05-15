@@ -1,11 +1,7 @@
 export function parseLine(line: string) {
-  const match = line.match(/#(\d+),\s*(\w+)([!\-\*\+]?)(?:#(\d+))?(?:>(\d))?/);
+  const match = line.match(/(\d+)\s+(\w+)([!\-\*\+]?)(?:\s+(\d+)(?:>(\d))?)?/);
 
   if (!match) return null;
-  let pointSymbol = false;
-  if (line.includes("=")) {
-    pointSymbol = true;
-  }
 
   const [, player, actionCode, qualitySymbol, target, targetPositionStr] =
     match;
@@ -37,7 +33,7 @@ export function parseLine(line: string) {
     action: actionMap[actionCode] || actionCode,
     quality: qualityMap[qualitySymbol] || "Normal",
     target: target ? `#${target}` : undefined,
-    point: !!pointSymbol,
+    point: line.includes("="),
     targetPosition
   };
 }

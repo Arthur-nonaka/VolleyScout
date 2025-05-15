@@ -562,8 +562,8 @@ export default function ScoutingPage() {
                       "0"
                     )}
                   </td>
-                  <td className="border p-2">{stats.errors}</td>
-                  <td className="border p-2">{stats.points}</td>
+                  <td className="border p-2" style={{backgroundColor: "#dc2626", color: "white"}}>{stats.errors}</td>
+                  <td className="border p-2" style={{backgroundColor: "#16a34a", color: "white"}}>{stats.points}</td>
                 </tr>
               );
             })}
