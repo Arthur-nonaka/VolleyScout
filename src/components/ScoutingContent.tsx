@@ -549,7 +549,7 @@ export default function ScoutingContent() {
                                   {[1, 2, 3, 4, 5, 6].map((pos) => {
                                     const count = stats.sets.filter(
                                       (s) =>
-                                        s.target === `#${pos}` &&
+                                        s.targetPosition === pos &&
                                         ((qIdx === 0 && s.quality === 2) ||
                                           (qIdx === 1 && s.quality === 1) ||
                                           (qIdx === 2 && s.quality === 0) ||

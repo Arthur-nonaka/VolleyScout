@@ -1,5 +1,10 @@
 import axios from "axios";
-axios.defaults.baseURL = "http://127.0.0.1:5000/matches";
+import dotenv from "dotenv";
+
+dotenv.config();
+
+axios.defaults.baseURL = process.env.NEXT_PUBLIC_URL ? `${process.env.NEXT_PUBLIC_URL}matches` : "http://127.0.0.1:5000/matches";
+
 
 export const getMatches = async () => {
   try {

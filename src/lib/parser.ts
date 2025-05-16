@@ -1,5 +1,6 @@
 export function parseLine(line: string) {
-  const match = line.match(/(\d+)\s+(\w+)([!\-\*\+]?)(?:\s+(\d+)(?:>(\d))?)?/);
+  const match = line.match(/^(\d+)\s+([A-Z]{1,2})([!#=-]?)(?:\s+(\d+)?(?:>(\d))?)?$/
+);
 
   if (!match) return null;
 
