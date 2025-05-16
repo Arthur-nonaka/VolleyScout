@@ -1,0 +1,5 @@
+{
+  "watch": ["server.ts"],
+  "ext": "ts",
+  "exec": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' ./server.ts"
+}
