@@ -1,11 +1,17 @@
-import { getMatches } from "@/Services/MatchService";
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import styles from "../assets/Matches.module.css";
 import { useRouter } from "next/navigation";
 
-export const Matches = () => {
-  const [matches, setMatches] = useState([]);
-  const [loading, setLoading] = useState(true);
+interface Match {
+  _id: string;
+  name: string;
+}
+
+interface MatchesProps {
+  matches: Match[];
+}
+
+export const Matches: React.FC<MatchesProps> = ({ matches }) => {
   const [isOpen, setIsOpen] = useState(false);
   const router = useRouter();
 
@@ -17,23 +23,6 @@ export const Matches = () => {
     router.push(`/scouting/${id}`);
   };
 
-  useEffect(() => {
-    const fetchMatches = async () => {
-      try {
-        const data = await getMatches();
-        setMatches(data);
-      } catch (error) {
-        console.error("Error fetching matches:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchMatches();
-  }, []);
-  if (loading && isOpen) {
-    return <div>Loading...</div>;
-  }
   if (matches.length === 0 && isOpen) {
     return <div>No matches found</div>;
   }
@@ -65,7 +54,16 @@ export const Matches = () => {
             <thead>
               <tr>
                 <th>Nome</th>
-                <th style={{display: "flex", justifyContent: "center", alignItems: "center"}}> * </th>
+                <th
+                  style={{
+                    display: "flex",
+                    justifyContent: "center",
+                    alignItems: "center",
+                  }}
+                >
+                  {" "}
+                  *{" "}
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -82,6 +80,16 @@ export const Matches = () => {
                   </td>
                 </tr>
               ))}
+              <tr>
+                <td>
+                  <button
+                    onClick={() => router.push("/scouting")}
+                    className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 hover:pointer transition-colors"
+                  >
+                    Criar Novo
+                  </button>
+                </td>
+              </tr>
             </tbody>
           </table>
         </div>

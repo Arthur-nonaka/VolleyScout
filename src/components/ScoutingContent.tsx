@@ -1,12 +1,15 @@
 "use client";
 import { useParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { parseLine } from "@/lib/parser";
 import { Tips } from "@/components/Tips";
+import { VideoPlayer } from "@/components/VideoPlayer";
+import { Excel } from "./Excel";
 import {
   createMatch,
   updateMatch,
   getMatchById,
+  getMatches,
 } from "@/Services/MatchService";
 import { Matches } from "@/components/Matches";
 
@@ -40,7 +43,7 @@ type TeamStats = {
 export default function ScoutingContent() {
   const [input, setInput] = useState("");
   const [matchName, setName] = useState("");
-  const [parsed, setParsed] = useState<ParsedAction[]>([]);
+  const [matches, setMatches] = useState([]);
   const [playerStats, setPlayerStats] = useState<Record<string, PlayerStats>>(
     {}
   );
@@ -51,29 +54,31 @@ export default function ScoutingContent() {
   const params = useParams();
   const id = params?.id as string | undefined;
 
-  useEffect(() => {
-    const fetchMatch = async () => {
-      if (id) {
-        try {
-          const data = await getMatchById(id);
-          console.log(data);
+  const fetchMatches = useCallback(async () => {
+    try {
+      const data = await getMatches();
+      setMatches(data);
+    } catch (error) {
+      console.error("Error fetching matches:", error);
+    }
+  }, []);
 
-          setInput(data.actions);
-          setName(data.name);
-        } catch (error) {
-          console.error("Error fetching match:", error);
-        }
+  const fetchMatch = useCallback(async () => {
+    if (id) {
+      try {
+        const data = await getMatchById(id);
+
+        setInput(data.actions);
+        setName(data.name);
+      } catch (error) {
+        console.error("Error fetching match:", error);
       }
-    };
-
-    fetchMatch();
+    }
   }, [id]);
 
-  const handleParse = () => {
+  const handleParse = useCallback(() => {
     const lines = input.split("\n").filter(Boolean);
     const result = lines.map(parseLine).filter(Boolean) as ParsedAction[];
-    console.log(result);
-    setParsed(result);
 
     const updatedStats: Record<string, PlayerStats> = {};
     const updatedTeamStats = { team1Points: 0, team2Points: 0 };
@@ -180,7 +185,15 @@ export default function ScoutingContent() {
 
     setPlayerStats(updatedStats);
     setTeamStats(updatedTeamStats);
-  };
+  }, [input]);
+
+  useEffect(() => {
+    fetchMatch();
+    fetchMatches();
+    if (id) {
+      handleParse();
+    }
+  }, [fetchMatch, fetchMatches, id, handleParse]);
 
   const countQualities = (arr: number[]) => {
     return {
@@ -271,27 +284,35 @@ export default function ScoutingContent() {
   return (
     <main className="p-6 max-w-7xl mx-auto">
       <Tips />
-      <Matches />
-      <h1 className="text-2xl font-bold mb-4">📋 Volleyball Scouting Tool</h1>
+      <Matches matches={matches} />
+      <VideoPlayer />
+      <h1 className="text-2xl font-bold mb-4">Volleyball Scouting Tool</h1>
 
       <textarea
-        className="w-full h-40 p-3 border rounded text-sm font-mono"
-        placeholder={`#1, S!6;\n#5, D-;\n#1, ST+#2;\n#2, A!1=;`}
+        className="w-full h-40 p-3 border rounded text-md font-mono"
+        placeholder={`1 S\n5 R3\n1 ST 2\n4 A! 1=`}
         value={input}
         onChange={(e) => setInput(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            handleParse();
+          }
+        }}
       />
       <button
-        className="mt-2 px-4 py-2 bg-blue-600 text-white rounded"
+        className="mt-2 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 cursor-pointer transition-colors"
         onClick={handleParse}
       >
         Parse
       </button>
       <button
-        className="mt-2 ml-4 px-4 py-2 bg-blue-600 text-white rounded"
+        className="mt-2 ml-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 cursor-pointer transition-colors"
         onClick={createMatchHandler}
       >
         {id ? "Atualizar" : "Salvar"}
       </button>
+      <Excel playerStats={playerStats} countQualities={countQualities} />
 
       <div className="mt-6">
         <h2 className="font-semibold">Player Stats</h2>
